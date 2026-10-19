@@ -1,6 +1,6 @@
 ---
 name: test-the-joins
-description: Build tests from how real users actually move through the code, not from how each function looks in isolation. Uses graphify to read the codebase as a graph, maps every way a user (or another system) enters it, and turns each path into journey tests covering the happy path AND the unknown ones — retries, second sessions, restarts mid-step, providers that accept then fail, settings read from a different place than they're written. Use when the suite is green but real bugs keep shipping, before trusting a big test count, when adding tests to an untested area, when auditing or trimming a test suite, or when asked "are we testing the right things?".
+description: Build tests from how real users actually move through the code, not from how each function looks in isolation. Uses graphify to read the codebase as a graph, maps every way a user (or another system) enters it, and turns each path into journey tests covering the happy path AND the unknown ones — retries, second sessions, restarts mid-step, providers that accept then fail, settings read from a different place than they're written. Use when the suite is green but real bugs keep shipping, before trusting a big test count, when adding tests to an untested area, when auditing or trimming a test suite, or when asked "am I testing the right things?".
 ---
 
 # test-the-joins
@@ -106,7 +106,7 @@ Tests stop bugs before release; add cheap checks that catch what slipped after: 
 - For AI features: an eval runnable on demand.
 
 ## Anti-patterns this skill exists to stop
-- "Coverage is 95%, so we're fine."
+- "Coverage is 95%, so the tests are fine."
 - A stub that can only succeed, standing in for the exact thing that broke.
 - A test that replaces the real step with `return "ok"`.
 - Testing one call when users make two.

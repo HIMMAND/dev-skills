@@ -10,17 +10,17 @@ Agent skills I use to build software with AI coding agents (Claude Code, Codex, 
 
 ## Why test-the-joins exists
 
-We had thousands of green tests, high coverage — and still shipped bugs every week. In one week:
+I had thousands of green tests and high coverage, and I still shipped bugs every week. In one week:
 
 - a lead's booking alert never reached the owner because the booking arrived on a *second* save;
 - alerts showed "sent" while the messaging provider had accepted and then dropped them;
 - the same meeting was booked twice when a chat restarted in a new session;
 - a setting was written under one key while the code read another;
-- a fix landed in the function we found first, not the path a feature flag actually used.
+- a fix landed in the function I found first, not the path a feature flag actually used.
 
 The modules that broke were 96–100% covered. Every bug sat at a **join** — between two calls, two sessions, two services, a writer and a reader — and every test faked exactly that join with a stub that could only succeed.
 
-So we flipped the order: **read the code first (with a code graph) to see how real users will use it, then test every path — happy and unknown.** After one pass the suite had fewer tests, ran faster, and the new journey tests failed on every one of that week's bugs when we put them back. They also found five more real bugs on the first run.
+So I flipped the order: **read the code first (with a code graph) to see how real users will use it, then test every path — happy and unknown.** After one pass the suite had fewer tests, ran faster, and the new journey tests failed on every one of that week's bugs when I put them back. They also found five more real bugs on the first run.
 
 Read the [principles](PRINCIPLES.md) — fourteen rules, short enough to keep in your head.
 
@@ -41,7 +41,7 @@ Or with the [skills CLI](https://www.npmjs.com/package/skills): `npx skills@late
 
 Ask your agent things like:
 
-- "Our tests are green but bugs keep shipping — run test-the-joins on this repo."
+- "My tests are green but bugs keep shipping — run test-the-joins on this repo."
 - "Map the doors and joins for the checkout flow and write journey tests."
 - "Audit the test suite: which fakes can't fail, which tests only pin wording?"
 - "Prove these new tests by reverting the fix."
