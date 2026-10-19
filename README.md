@@ -6,7 +6,7 @@ Agent skills I use to build software with AI coding agents (Claude Code, Codex, 
 
 | Skill | What it does |
 |---|---|
-| [test-the-joins](skills/test-the-joins/SKILL.md) | Builds tests from how real users actually move through the code. Reads the codebase as a graph (graphify), maps every way users and other systems enter it, and turns each path into journey tests — the happy path **and** the unknown ones: retries, second sessions, restarts mid-step, providers that accept then fail, settings written under one key and read under another. |
+| [test-the-joins](skills/test-the-joins/SKILL.md) | Builds tests from how real users actually move through the code, then draws a before/after map of where the old tests were blind and what checks each step now. Reads the codebase as a graph (graphify), maps every way users and other systems enter it, and turns each path into journey tests — the happy path **and** the unknown ones: retries, second sessions, restarts mid-step, providers that accept then fail, settings written under one key and read under another. |
 
 ## Why test-the-joins exists
 

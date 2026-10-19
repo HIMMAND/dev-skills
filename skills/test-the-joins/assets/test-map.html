@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test map</title>
+<style>
+:root{--bg:#fbfaf7;--card:#f1efe8;--fg:#2c2c2a;--muted:#5f5e5a;--line:#d3d1c7;
+--bad-bg:#fcebeb;--bad:#791f1f;--weak-bg:#faeeda;--weak:#633806;--good-bg:#eaf3de;--good:#27500a}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1c1a;--card:#2c2c2a;--fg:#f1efe8;--muted:#b4b2a9;--line:#444441;
+--bad-bg:#501313;--bad:#f7c1c1;--weak-bg:#412402;--weak:#fac775;--good-bg:#173404;--good:#c0dd97}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:22px;font-weight:600;margin:0 0 4px} .sub{color:var(--muted);margin:0 0 18px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:16px}
+.m{background:var(--card);border-radius:8px;padding:10px 12px}.m p{margin:0;font-size:12px;color:var(--muted)}.m b{font-size:19px;font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-bottom:12px}
+.pill{border-radius:6px;padding:1px 8px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 180px minmax(0,1fr);gap:10px}
+.head{font-size:12px;color:var(--muted);text-align:center;margin-bottom:6px}
+.cell{border-radius:8px;padding:8px 10px;font-size:13px}
+.bad{background:var(--bad-bg);color:var(--bad)}.weak{background:var(--weak-bg);color:var(--weak)}.good{background:var(--good-bg);color:var(--good)}
+.cell strong{font-weight:600}
+.step{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px;text-align:center;font-weight:600;font-size:13px;display:flex;flex-direction:column;justify-content:center}
+.step span{font-weight:400;font-size:12px;color:var(--muted)}
+.down{text-align:center;color:var(--muted);margin:3px 0}
+h2{font-size:16px;margin:26px 0 10px}
+@media (max-width:640px){.row{grid-template-columns:1fr}.head{display:none}.step{order:-1}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<!-- The agent fills ONLY this block. status: "bad" = nothing checked it, "weak" = faked so it could only succeed, "good" = real path tested incl. failures. -->
+<script type="application/json" id="data">
+{
+  "title": "Test map: before and after",
+  "subtitle": "Each row is one step of a real user's journey. Left: how it was checked before. Right: how it is checked now.",
+  "metrics": [
+    {"label": "Bugs that got past green tests", "value": "6"},
+    {"label": "New bugs found by the new tests", "value": "4"},
+    {"label": "Tests", "value": "5,271 → 5,255"},
+    {"label": "Coverage", "value": "88.5 → 88.8%"}
+  ],
+  "journeys": [
+    {
+      "name": "Visitor books a meeting",
+      "steps": [
+        {"step": "Lead saved twice", "detail": "fast save, then booking",
+         "before": {"status": "weak", "head": "Second save faked.", "text": "The step was replaced with \"ok\", so the skip branch never ran."},
+         "after":  {"status": "good", "head": "Real transcripts replayed.", "text": "Second save books once; a later save can't wipe it."}},
+        {"step": "Owner alerted", "detail": "messaging provider",
+         "before": {"status": "weak", "head": "Send stub always succeeds.", "text": "\"Sent\" while the provider dropped it."},
+         "after":  {"status": "good", "head": "Fake gateway can fail.", "text": "Accepted-then-failed shows \"not confirmed\".", "found": "failed status dropped"}}
+      ]
+    }
+  ]
+}
+</script>
+<script>
+const D = JSON.parse(document.getElementById('data').textContent);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cell = c => `<div class="cell ${esc(c.status)}"><strong>${esc(c.head)}</strong> ${esc(c.text)}${c.found ? ` <strong>Found:</strong> ${esc(c.found)}.` : ''}</div>`;
+document.title = D.title;
+document.getElementById('app').innerHTML = `
+<h1>${esc(D.title)}</h1><p class="sub">${esc(D.subtitle)}</p>
+<div class="metrics">${D.metrics.map(m => `<div class="m"><p>${esc(m.label)}</p><b>${esc(m.value)}</b></div>`).join('')}</div>
+<div class="legend"><span><span class="pill bad">red</span> nothing checked it</span><span><span class="pill weak">amber</span> faked: could only succeed</span><span><span class="pill good">green</span> real path tested, incl. failures</span></div>
+${D.journeys.map(j => `<h2>${esc(j.name)}</h2>
+<div class="row head"><div>Before</div><div>Journey step</div><div>Now</div></div>
+${j.steps.map(s => `<div class="row">${cell(s.before)}<div class="step">${esc(s.step)}<span>${esc(s.detail)}</span></div>${cell(s.after)}</div>`).join('<div class="down">↓</div>')}`).join('')}`;
+</script>
+</body>
+</html>

@@ -98,12 +98,21 @@ Pinning sentences in a system prompt proves the words exist, not that the model 
 ### 9. Close the loop in the release gate
 Tests stop bugs before release; add cheap checks that catch what slipped after: duplicate side effects in the last 7 days, sends with no delivery receipt, old names still present in third-party copies, deploy actually running the new code. And never merge on red — turn on required checks. See [references/release-gate.md](references/release-gate.md).
 
+### 10. Draw the before/after test map
+Copy `assets/test-map.html` to `test-map.html` at the repo root and replace ONLY the JSON block inside it. One journey per door from step 1, one row per join on it, in the order a real user hits them. For each row:
+- `before`: what the old suite did at that join. `bad` = no test reaches it, `weak` = a fake that can only succeed or a test that pins wording, `good` = the real path was already tested, failures included. Take this from the step 3 audit, not from memory.
+- `after`: the same after this run. Mark `good` only when a journey test drives that join and passed prove-by-revert in step 6. If a found bug isn't fixed yet, add `found` and keep the row `weak`.
+- `metrics`: real numbers from this run (bugs that got past the old suite, bugs the new tests found, test count before → after, coverage before → after). Leave out any you didn't measure. Never estimate.
+
+Open the file in a browser and check it on a narrow screen. Its job is to show, in one look, where the old suite was blind and what checks each join now.
+
 ## Output
 - `test-plan.md`: doors, joins, the scenario matrix with coverage marks.
 - Journey tests + realistic fakes, each proven by revert.
 - Pinned expected-failures for bugs found but not fixed.
 - A trim PR with before/after numbers.
 - For AI features: an eval runnable on demand.
+- `test-map.html`: the before/after map of every journey and join (step 10).
 
 ## Anti-patterns this skill exists to stop
 - "Coverage is 95%, so the tests are fine."
