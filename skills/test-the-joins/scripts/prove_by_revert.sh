@@ -3,7 +3,8 @@
 #
 #   prove_by_revert.sh <fix-commit> "<test command>"
 #
-# Reverts ONLY the non-test files changed by <fix-commit> in the working tree,
+# Reverts ONLY the non-test files changed by <fix-commit> in the working tree
+# (tests, fixtures and eval scripts are kept; add your own with PROVE_EXCLUDE='<regex>'),
 # runs the test command (expects it to FAIL), then restores those files.
 # Exit 0 = proven (the test failed without the fix and the tree is restored).
 # Exit 1 = NOT proven (the test still passed without the fix: it doesn't reach the join).
@@ -18,7 +19,7 @@ git rev-parse --verify --quiet "$FIX^{commit}" >/dev/null || { echo "unknown com
 
 # Product files only: skip anything that looks like a test or fixture.
 FILES=()
-while IFS= read -r f; do FILES+=("$f"); done < <(git diff --name-only "$FIX^" "$FIX" | grep -vE '(^|/)(tests?|__tests__|fixtures)/|(^|/)test_[^/]*\.py$|_test\.py$|\.(test|spec)\.(t|j)sx?$')
+while IFS= read -r f; do FILES+=("$f"); done < <(git diff --name-only "$FIX^" "$FIX" | grep -vE '(^|/)(tests?|__tests__|fixtures|evals?)/|(^|/)test_[^/]*\.py$|_test\.py$|\.(test|spec)\.(t|j)sx?$|(^|/)eval[-_][^/]*$|(^|/)[^/]*[-_.]eval\.[a-z]+$' | { if [[ -n "${PROVE_EXCLUDE:-}" ]]; then grep -vE "$PROVE_EXCLUDE"; else cat; fi; })
 if [[ ${#FILES[@]} -eq 0 ]]; then echo "no product files in $FIX" >&2; exit 2; fi
 if ! git diff --quiet -- "${FILES[@]}"; then
   echo "uncommitted changes in files the fix touched; commit or stash them first" >&2; exit 2

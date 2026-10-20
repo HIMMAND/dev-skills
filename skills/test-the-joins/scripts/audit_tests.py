@@ -7,7 +7,8 @@ Heuristics (read the hits, don't trust them blindly):
   always_succeeds   a stub of a boundary that can only succeed
                     (returns an id / ok / claimed: True / resolved value with ok)
   constant_step     a real step replaced by `return "ok"` or a lambda returning "ok"
-  wording_pin       assert on a long literal string (>= 40 chars)
+  wording_pin       assert on a long literal string (>= 40 chars); skipped when the line
+                    or the line above carries `test-the-joins: exact` (wording IS the behaviour)
   source_pin        a test that reads product source files and regex-matches them
   prompt_hash       a test that hashes rendered text (sha256/md5) to pin it
   sleep             real-time sleeps in tests (slow + flaky; use a fake clock)
@@ -59,6 +60,8 @@ PATTERNS = {
     ],
 }
 
+MARK = "test-the-joins: exact"
+
 BOUNDARY_HINTS = re.compile(
     r"(send|post|deliver|notify|claim|lock|idempot|charge|pay|webhook|template|calendar|crm|stripe|twilio|"
     r"sms|whatsapp|email|smtp|openai|llm|fetch|http)",
@@ -88,6 +91,8 @@ def scan(root: str):
         for i, line in enumerate(lines, 1):
             for kind, regs in PATTERNS.items():
                 if any(r.search(line) for r in regs):
+                    if kind == "wording_pin" and (MARK in line or (i > 1 and MARK in lines[i - 2])):
+                        continue
                     if kind == "always_succeeds":
                         window = " ".join(lines[max(0, i - 4): i + 1])
                         if not BOUNDARY_HINTS.search(window):

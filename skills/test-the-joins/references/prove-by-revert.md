@@ -15,4 +15,12 @@
 
 If the test still passes with the fix reverted, the test is wrong (it doesn't reach the join) — fix the test, not the table.
 
-No fix to revert (testing an existing behaviour)? Break the behaviour by hand (flip a condition, drop a call), run, restore. Same rule: you must see it fail once.
+One commit holds several rules (a whole feature)? Reverting it only proves the tests fail together. Break each rule on its own:
+```bash
+scripts/prove_by_mutation.sh src/lib/lookup.ts 'if (!namesSource(quote)) return false' 'if (false) return false' "npm test -- lookup"
+```
+One line per rule in the table. A mutation that leaves the tests green means that rule has no test.
+
+No fix to revert (testing an existing behaviour)? Same tool: break the behaviour with `prove_by_mutation.sh` (flip a condition, drop a call). Same rule: you must see it fail once.
+
+`prove_by_revert.sh` keeps tests, fixtures and eval scripts (`evals/`, `eval-*`, `*.eval.*`) in place. Add more with `PROVE_EXCLUDE='<regex>'`.

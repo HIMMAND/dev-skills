@@ -20,7 +20,15 @@ Read [PRINCIPLES.md](../../PRINCIPLES.md) once. Then follow the steps.
   graphify query "how does a booking reach the calendar" --budget 1500
   graphify path "EntryPoint" "SideEffect"
   ```
+  If the graph lives outside the repo (one graph for several repos, built a folder up), pass it every time: `graphify explain "fnName()" --graph ../graphify-out/graph.json`. With several repos in one graph a bare name can be ambiguous; qualify it with the file (`"lookup.ts:lookup()"`) or run `graphify query` first to find the right node.
 - The project's own test runner. Nothing else is required.
+
+## Where the files go
+Everything this skill writes goes in `docs/test-maps/` in the repo under test, named after the change: `docs/test-maps/<change>-test-plan.md` and `docs/test-maps/<change>-test-map.html`. Never the repo root.
+
+## Scope: a whole suite or one change
+- **Auditing a whole suite:** all ten steps.
+- **One feature or fix (a single PR):** steps 1–6, step 8 if it touches an AI feature, and step 10. Skip step 7 (trim) and step 9 (release gate); they are suite-wide work and belong in their own PR. Say in the PR which steps you skipped.
 
 ## The steps
 
@@ -30,7 +38,7 @@ List every way work enters the system: HTTP routes, webhooks, queue/job handlers
 graphify query "entry points routes webhooks job handlers" --budget 2000
 graphify path "<door handler>" "<external side effect>"
 ```
-Write them down in `test-plan.md` as a table: door → who uses it (end user / admin / other system / timer) → the side effects it can cause (DB rows, messages, emails, calendar events, CRM records, charges).
+Write them down in the test plan (see "Where the files go") as a table: door → who uses it (end user / admin / other system / timer) → the side effects it can cause (DB rows, messages, emails, calendar events, CRM records, charges).
 
 ### 2. Walk each door like a real user — then like the real world
 For each door, trace the path with `graphify explain` on every function it calls until you reach the side effects. At each **join** (a call to another service, a queue, a DB write read later by someone else, a setting, a retry boundary, a cache) list the scenarios. Use the scenario matrix in [references/scenario-map.md](references/scenario-map.md):
@@ -52,6 +60,8 @@ It flags (details: [references/audit-checklist.md](references/audit-checklist.md
 - tests that **pin wording** (exact strings, regex over source files, hashes of prompts) instead of behaviour;
 - helpers and routes nothing calls (confirm each with `graphify explain` AND a text search before deleting).
 
+When exact wording is the behaviour under test (a legal line, a quote the product must repeat word for word), mark the assertion with a `test-the-joins: exact` comment on the same line or the line above. The scanner skips marked lines.
+
 Mark each scenario from step 2: **covered end to end / partly / not at all.** Coverage % is not the answer — the modules that break are often the best covered. The question is whether any test drives the *join*.
 
 ### 4. Build fakes that can fail like the real thing
@@ -66,6 +76,8 @@ Fake only at the **outermost edge** (the HTTP call to the third party), never in
 ### 5. Write journey tests from real data
 Each journey replays a real path end to end through the real code, using recorded payloads (anonymised: names → "Visitor", phone numbers → made-up, keep language and shape). Template: [references/journey-template.md](references/journey-template.md). A journey asserts **what the person on the far end gets** — one confirmation, not two; the owner alerted once, with the booking; a "not confirmed" state when the provider failed later — not which internal function was called.
 
+**Wait for every write before the test ends.** If the code fires a write without awaiting it (a background save, a log row, a memory update), the journey must wait for its result to land (poll for the row, await the returned promise, drain the queue) and then assert on it. A test that ends while a write is still running can hang the whole file or pass by luck; waiting for it also makes the journey check one more real side effect.
+
 Good first journeys (they catch the most):
 1. A save that happens in two passes (fast save, then a later background save with more information).
 2. The same person in a second session / tab / device.
@@ -79,7 +91,13 @@ A test you never saw fail proves nothing. For each journey, revert the fix (or b
 ```bash
 skills/test-the-joins/scripts/prove_by_revert.sh <fix-commit> "<test command>"
 ```
-Record a table in the PR: *fix reverted → journey that failed.* See [references/prove-by-revert.md](references/prove-by-revert.md).
+Reverting a whole commit is too coarse when one commit holds a feature with several rules: it proves the tests fail together, not that each rule has a test. Break one rule at a time instead:
+```bash
+skills/test-the-joins/scripts/prove_by_mutation.sh <file> '<exact code to break>' '<broken version>' "<test command>"
+```
+It swaps the first exact match, runs the tests (expects a failure), and restores the file. One mutation per rule; a mutation that leaves the tests green means that rule is untested.
+
+Record a table in the PR: *fix reverted or rule broken → journey that failed.* See [references/prove-by-revert.md](references/prove-by-revert.md).
 
 When a journey uncovers a bug you can't fix in the same change, pin it as an **expected failure** (strict xfail / `test.todo` that fails when it starts passing) so it flips the day it's fixed.
 
@@ -87,7 +105,7 @@ When a journey uncovers a bug you can't fix in the same change, pin it as an **e
 Delete or merge, with proof that nothing real was lost:
 - near-duplicate tests (the same behaviour asserted by 3 layers) → keep the journey layer;
 - dated "fix-of-the-day" files → merge by subject with one shared fixture;
-- wording pins → one constants table + a check that each string still exists in the product;
+- wording pins → one constants table + a check that each string still exists in the product (exact wording that IS the behaviour, like a quote that must be repeated word for word, stays: mark it, see step 3);
 - prompt-text pins and prompt hashes → replaced by behaviour evals (step 8).
 
 Guard: product coverage must not drop, and every journey must still pass. Report test count, runtime and coverage before → after.
@@ -99,20 +117,20 @@ Pinning sentences in a system prompt proves the words exist, not that the model 
 Tests stop bugs before release; add cheap checks that catch what slipped after: duplicate side effects in the last 7 days, sends with no delivery receipt, old names still present in third-party copies, deploy actually running the new code. And never merge on red — turn on required checks. See [references/release-gate.md](references/release-gate.md).
 
 ### 10. Draw the before/after test map
-Copy `assets/test-map.html` to `test-map.html` at the repo root and replace ONLY the JSON block inside it. One journey per door from step 1, one row per join on it, in the order a real user hits them. For each row:
+Copy `assets/test-map.html` to `docs/test-maps/<change>-test-map.html` and replace ONLY the JSON block inside it. One journey per door from step 1, one row per join on it, in the order a real user hits them. For each row:
 - `before`: what the old suite did at that join. `bad` = no test reaches it, `weak` = a fake that can only succeed or a test that pins wording, `good` = the real path was already tested, failures included. Take this from the step 3 audit, not from memory.
-- `after`: the same after this run. Mark `good` only when a journey test drives that join and passed prove-by-revert in step 6. If a found bug isn't fixed yet, add `found` and keep the row `weak`.
+- `after`: the same after this run. Mark `good` only when a journey test drives that join and passed prove-by-revert in step 6. If a found bug isn't fixed yet, add `found` and keep the row `weak`. Use `pending` for a check that is written but hasn't run yet (an eval waiting on an API key, a staging test not done); never mark it `good` or `weak`.
 - `metrics`: real numbers from this run (bugs that got past the old suite, bugs the new tests found, test count before → after, coverage before → after). Leave out any you didn't measure. Never estimate.
 
 Open the file in a browser and check it on a narrow screen. Its job is to show, in one look, where the old suite was blind and what checks each join now.
 
 ## Output
-- `test-plan.md`: doors, joins, the scenario matrix with coverage marks.
+- `docs/test-maps/<change>-test-plan.md`: doors, joins, the scenario matrix with coverage marks.
 - Journey tests + realistic fakes, each proven by revert.
 - Pinned expected-failures for bugs found but not fixed.
 - A trim PR with before/after numbers.
 - For AI features: an eval runnable on demand.
-- `test-map.html`: the before/after map of every journey and join (step 10).
+- `docs/test-maps/<change>-test-map.html`: the before/after map of every journey and join (step 10).
 
 ## Anti-patterns this skill exists to stop
 - "Coverage is 95%, so the tests are fine."
